@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta content="text.html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+  <title>Game</title>
+</head>
+<body> 
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  
+  <script>
+    let ballX = 75;
+    let ballY = 75;
+    let ballSpeedX = 5;
+    let ballSpeedY = 7;
+
+    const BRICK_W = 100;
+    const BRICK_H = 50;
+    const BRICK_GAP = 2;
+    const BRICK_COUNT = 8;
+    let brickGrid = new Array(BRICK_COUNT);  // is brick visible
+
+
+    const PADDLE_WIDTH = 100;
+    const PADDLE_THICKNESS = 10;
+    const PADDLE_DIST_FROM_EDGE = 40;
+    let paddleX = 400;
+    
+    let canvas, canvasContext;
+
+    let mouseX = 0;
+    let mouseY = 0;
+
+    function updateMousePos(e) {
+      let rect = canvas.getBoundingClientRect(); // gives the position of the canvas on the page 
+      let root = document.documentElement;  // 
+      
+      mouseX = Math.round(e.clientX - rect.left - root.scrollLeft); // cancel out how far the canvas is from the left side and how far the person has scrolled from side to side
+      mouseY = Math.round(e.clientY - rect.top - root.scrollTop); 
+
+      paddleX = mouseX - PADDLE_WIDTH/2; 
+      
+    };
+
+    // 50% chance of each brick being displayed
+    function brickReset() {
+      for(let i=0; i<BRICK_COUNT; i++){
+        if(Math.random() < 0.5) {
+          brickGrid[i] = true;
+        }else{
+          brickGrid[i] = false;
+        } // end of if/else (random display)
+      } // end of for loop (each brick)
+    }; // end of brickReset func
+
+    window.onload = function() {
+      canvas = document.getElementById('gameCanvas');
+      canvasContext = canvas.getContext('2d');
+
+      let framesPerSecond = 30;
+      setInterval(updateAll, 1000/framesPerSecond);
+
+      canvas.addEventListener('mousemove', updateMousePos);
+      brickReset();
+    };
+
+    function updateAll() {
+      moveAll();
+      drawAll();
+    };
+
+    function ballReset() {  // resets the ball in the centre of the canvas
+      ballX = canvas.width/2;
+      ballY = canvas.height/2;
+    };
+
+    function moveAll() {  // moves the ball
+      ballX += ballSpeedX;
+      ballY += ballSpeedY;
+
+      // movement along x-axis
+      if(ballX > canvas.width-1){ // right side
+        ballSpeedX *= -1; // swap from positive to negative
+      }else if(ballX < 1){ // left side
+        ballSpeedX *= -1; // swap back from negative to positive
+      }
+
+      // movement along y-axis
+      if(ballY > canvas.height-1){ // bottom of canvas
+        ballReset(); 
+        // ballSpeedY *= -1; // swap from positive to negative
+      }else if(ballY < 1){ // top of canvas
+        ballSpeedY *= -1; // swap back from negative to positive
+      }
+
+      // specify the 'hit' area of the paddle
+      let paddleTopEdgeY = canvas.height-PADDLE_DIST_FROM_EDGE;
+      let paddleBottomEdgeY = paddleTopEdgeY + PADDLE_THICKNESS;
+      let paddleLeftEdgeX = paddleX;
+      let paddleRightEdgeX = paddleX + PADDLE_WIDTH;
+
+      if( ballY > paddleTopEdgeY && ballY < paddleBottomEdgeY &&   // top and bottom
+          ballX > paddleLeftEdgeX && ballX < paddleRightEdgeX) {   // left and right
+            ballSpeedY *= -1; // reverse direction
+
+            let centerOfPaddleX = paddleX + PADDLE_WIDTH/2;
+            let ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
+            ballSpeedX = ballDistFromPaddleCenterX * 0.35;  // creates a speed range along the x-axis of -17.5 (to the left) to 17.5 (to the right)
+      }
+    };
+
+    function drawBricks() {
+      for (let i=0; i<BRICK_COUNT; i++) {
+        if(brickGrid[i]) {
+          colorRect(BRICK_W*i,0, BRICK_W-BRICK_GAP,BRICK_H, 'blue');
+        } // end of is this break here
+      } // end of for each brick
+    }; // end of drawBricks func
+
+    // 
+    function drawAll() { 
+      colorRect(0,0, canvas.width,canvas.height, 'black'); // draw background
+      colorCircle(ballX,ballY, 8, 'white'); // draw the ball
+      colorRect(paddleX,canvas.height-PADDLE_DIST_FROM_EDGE, PADDLE_WIDTH,PADDLE_THICKNESS, 'white'); // draw the paddle
+      drawBricks(); // draw each brick
+
+      let mouseBrickCol = mouseX / BRICK_W;
+      let mouseBrickRow = mouseY / BRICK_H;
+      colorText(mouseBrickCol+","+mouseBrickRow, mouseX,mouseY, 'yellow'); // helps identify the array index of each brick the mouse hovers over
+    };
+
+    // function to draw a rectangle
+    function colorRect(topLeftX,topleftY, boxWidth,boxHeight, fillColor) {
+      canvasContext.fillStyle = fillColor;
+      canvasContext.fillRect(topLeftX,topleftY, boxWidth,boxHeight);
+    };
+
+    // function to draw a ball
+    function colorCircle(centerX,centerY, radius, ballColor) {
+      canvasContext.fillStyle = ballColor;
+      canvasContext.beginPath();
+      canvasContext.arc(centerX,centerY, radius, 0,Math.PI*2, true);  // position of centre, radius, draw arc (twice to make a circle), clockwise
+      canvasContext.fill();
+    };
+
+    // function to display text
+    function colorText(showWords, textX,textY, fillColor) {
+      canvasContext.fillStyle = fillColor;
+      canvasContext.fillText(showWords, textX,textY);
+    };
+
+  </script>
+</body>
+</html>
