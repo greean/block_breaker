@@ -3,7 +3,7 @@
 <head>
   <meta content="text.html;charset=utf-8" http-equiv="Content-Type">
   <meta content="utf-8" http-equiv="encoding">
-  <title>Game</title>
+  <title>Block Breaker</title>
 </head>
 <body> 
   <canvas id="gameCanvas" width="800" height="600"></canvas>
@@ -14,17 +14,18 @@
     let ballSpeedX = 5;
     let ballSpeedY = 7;
 
-    const BRICK_W = 100;
-    const BRICK_H = 50;
+    const BRICK_W = 80;
+    const BRICK_H = 20;
     const BRICK_GAP = 2;
-    const BRICK_COUNT = 8;
-    let brickGrid = new Array(BRICK_COUNT);  // is brick visible
+    const BRICK_COLS = 10;
+    const BRICK_ROWS = 14;
+    let brickGrid = new Array(BRICK_COLS * BRICK_ROWS);  // array identifier for each brick
 
 
     const PADDLE_WIDTH = 100;
     const PADDLE_THICKNESS = 10;
     const PADDLE_DIST_FROM_EDGE = 40;
-    let paddleX = 400;
+    let paddleX = 400; // default start position for the paddle
     
     let canvas, canvasContext;
 
@@ -35,8 +36,9 @@
       let rect = canvas.getBoundingClientRect(); // gives the position of the canvas on the page 
       let root = document.documentElement;  // 
       
-      mouseX = Math.round(e.clientX - rect.left - root.scrollLeft); // cancel out how far the canvas is from the left side and how far the person has scrolled from side to side
-      mouseY = Math.round(e.clientY - rect.top - root.scrollTop); 
+      // mouse fix for majority of browsers
+      mouseX = e.clientX - rect.left - root.scrollLeft; // cancel out how far the canvas is from the left side and how far the person has scrolled from side to side
+      mouseY = e.clientY - rect.top - root.scrollTop; 
 
       paddleX = mouseX - PADDLE_WIDTH/2; 
       
@@ -44,13 +46,18 @@
 
     // 50% chance of each brick being displayed
     function brickReset() {
-      for(let i=0; i<BRICK_COUNT; i++){
+      for(let i=0; i<BRICK_COLS*BRICK_ROWS; i++){
         if(Math.random() < 0.5) {
           brickGrid[i] = true;
         }else{
           brickGrid[i] = false;
         } // end of if/else (random display)
+
+        // brickGrid[i] = true; // comment out the above and use this line to set all to true
       } // end of for loop (each brick)
+
+      // brickGrid[5] = false; // set specific bricks to not show
+
     }; // end of brickReset func
 
     window.onload = function() {
@@ -108,13 +115,21 @@
             ballSpeedX = ballDistFromPaddleCenterX * 0.35;  // creates a speed range along the x-axis of -17.5 (to the left) to 17.5 (to the right)
       }
     };
+    
+    function rowColToArrayIndex(col, row) { // function to give the index for each brick within brickGrid
+      return col + BRICK_COLS * row;
+    }
 
     function drawBricks() {
-      for (let i=0; i<BRICK_COUNT; i++) {
-        if(brickGrid[i]) {
-          colorRect(BRICK_W*i,0, BRICK_W-BRICK_GAP,BRICK_H, 'blue');
-        } // end of is this break here
-      } // end of for each brick
+      for (let eachRow=0; eachRow<BRICK_ROWS; eachRow++ ) { // each row
+        for (let eachCol=0; eachCol<BRICK_COLS; eachCol++) { // each column in that row
+          
+          let arrayIndex = rowColToArrayIndex(eachCol, eachRow); // gives the index for each brick
+          if(brickGrid[arrayIndex]) {
+            colorRect(BRICK_W*eachCol,BRICK_H*eachRow, BRICK_W-BRICK_GAP,BRICK_H-BRICK_GAP, 'blue');
+          } // end of is this break here
+        } // end of for each column
+      } // end of for each row
     }; // end of drawBricks func
 
     // 
@@ -124,9 +139,14 @@
       colorRect(paddleX,canvas.height-PADDLE_DIST_FROM_EDGE, PADDLE_WIDTH,PADDLE_THICKNESS, 'white'); // draw the paddle
       drawBricks(); // draw each brick
 
-      let mouseBrickCol = mouseX / BRICK_W;
-      let mouseBrickRow = mouseY / BRICK_H;
-      colorText(mouseBrickCol+","+mouseBrickRow, mouseX,mouseY, 'yellow'); // helps identify the array index of each brick the mouse hovers over
+      let mouseBrickCol = Math.floor(mouseX / BRICK_W);
+      let mouseBrickRow = Math.floor(mouseY / BRICK_H);
+      let brickIndexUnderMouse = rowColToArrayIndex(mouseBrickCol, mouseBrickRow);
+      colorText("("+mouseBrickCol+","+mouseBrickRow+") :"+brickIndexUnderMouse, mouseX,mouseY, 'yellow'); // helps identify the array index of each brick the mouse hovers over
+
+      if(brickIndexUnderMouse >= 0 && brickIndexUnderMouse < BRICK_COLS*BRICK_ROWS) {
+        brickGrid[brickIndexUnderMouse] = false;
+      }
     };
 
     // function to draw a rectangle
