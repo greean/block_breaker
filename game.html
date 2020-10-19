@@ -3,24 +3,27 @@
 <head>
   <meta content="text.html;charset=utf-8" http-equiv="Content-Type">
   <meta content="utf-8" http-equiv="encoding">
+  <link rel="stylesheet" media="screen" href="style.css">
   <title>Block Breaker</title>
 </head>
 <body> 
+  <h1>Block Breaker</h1>
   <canvas id="gameCanvas" width="800" height="600"></canvas>
   
   <script>
+    // variables
     let ballX = 75;
     let ballY = 75;
     let ballSpeedX = 5;
     let ballSpeedY = 7;
 
-    const BRICK_W = 80;
-    const BRICK_H = 20;
-    const BRICK_GAP = 2;
-    const BRICK_COLS = 10;
-    const BRICK_ROWS = 14;
-    let brickGrid = new Array(BRICK_COLS * BRICK_ROWS);  // array identifier for each brick
-
+    const BLOCK_W = 80;
+    const BLOCK_H = 40;
+    const BLOCK_GAP = 2;
+    const BLOCK_COLS = 10;
+    const BLOCK_ROWS = 7;
+    let blockGrid = new Array(BLOCK_COLS * BLOCK_ROWS);  // array identifier for each block
+    let blocksLeft = 0;
 
     const PADDLE_WIDTH = 100;
     const PADDLE_THICKNESS = 10;
@@ -32,121 +35,211 @@
     let mouseX = 0;
     let mouseY = 0;
 
+    // function to make the paddle move with the mouse
     function updateMousePos(e) {
       let rect = canvas.getBoundingClientRect(); // gives the position of the canvas on the page 
-      let root = document.documentElement;  // 
+      let root = document.documentElement;  // allows access to all the elements within the document
       
       // mouse fix for majority of browsers
       mouseX = e.clientX - rect.left - root.scrollLeft; // cancel out how far the canvas is from the left side and how far the person has scrolled from side to side
       mouseY = e.clientY - rect.top - root.scrollTop; 
 
       paddleX = mouseX - PADDLE_WIDTH/2; 
-      
+      // note paddleY is not needed as this won't change, i.e. paddle only moves left and right
+
+      // cheat to check ball/block collisions
+      ballX = mouseX;
+      ballY = mouseY;
+      ballSpeedX = 4;
+      ballSpeedY = -4;
     };
 
-    // 50% chance of each brick being displayed
-    function brickReset() {
-      for(let i=0; i<BRICK_COLS*BRICK_ROWS; i++){
-        if(Math.random() < 0.5) {
-          brickGrid[i] = true;
-        }else{
-          brickGrid[i] = false;
-        } // end of if/else (random display)
+    // displays the blocks and how they are set up 
+    function blockReset() {
+      for(let i=0; i<BLOCK_COLS*BLOCK_ROWS; i++){
+        // if(Math.random() < 0.5) {  // 50% chance of each block being displayed
+        //   blockGrid[i] = true;
+        //   blocksLeft++;
+        // }else{
+        //   blockGrid[i] = false;
+        // } // end of if/else (random display)
 
-        // brickGrid[i] = true; // comment out the above and use this line to set all to true
-      } // end of for loop (each brick)
+        blockGrid[i] = true; // comment out the above and use this line to set all to true
+        blocksLeft++;
+      } // end of for loop (each block)
 
-      // brickGrid[5] = false; // set specific bricks to not show
+      // blockGrid[5] = false; // set specific blocks to not show
 
-    }; // end of brickReset func
+    }; // end of blockReset func
 
+    // once the window has loaded
     window.onload = function() {
       canvas = document.getElementById('gameCanvas');
       canvasContext = canvas.getContext('2d');
 
-      let framesPerSecond = 30;
+      let framesPerSecond = 20;
       setInterval(updateAll, 1000/framesPerSecond);
 
       canvas.addEventListener('mousemove', updateMousePos);
-      brickReset();
+
+      blockReset();
+      // ballReset();
     };
 
+    // runs all move and draw functions for each frame
     function updateAll() {
       moveAll();
       drawAll();
     };
 
-    function ballReset() {  // resets the ball in the centre of the canvas
-      ballX = canvas.width/2;
-      ballY = canvas.height/2;
+    // sets where the ball is positioned once it's moved off the bottom edge
+    function ballReset() {  
+      ballX = canvas.width/2; // centre of the x-axis
+      ballY = canvas.height/2; // centre of the y-axis
     };
 
-    function moveAll() {  // moves the ball
+    // function to move the ball
+    function ballMove() {
       ballX += ballSpeedX;
       ballY += ballSpeedY;
 
       // movement along x-axis
-      if(ballX > canvas.width-1){ // right side
+      if(ballX > canvas.width){ // right side
         ballSpeedX *= -1; // swap from positive to negative
-      }else if(ballX < 1){ // left side
+      };
+      if(ballX < 0){ // left side
         ballSpeedX *= -1; // swap back from negative to positive
-      }
+      };
 
       // movement along y-axis
-      if(ballY > canvas.height-1){ // bottom of canvas
-        ballReset(); 
-        // ballSpeedY *= -1; // swap from positive to negative
-      }else if(ballY < 1){ // top of canvas
-        ballSpeedY *= -1; // swap back from negative to positive
-      }
+      if(ballY < 0){ // top of canvas
+        ballSpeedY *= -1; // swap from negative to positive
+      };
+      if(ballY > canvas.height){ // bottom of canvas
+        ballReset(); // reset the ball position
+      };
+    };
 
-      // specify the 'hit' area of the paddle
+
+    // function to check for the ball hitting a visible block
+    function ballBlockHandling() {
+      // check if the ball is within the range of the columns and rows
+      let ballBlockCol = Math.floor(ballX / BLOCK_W);
+      let ballBlockRow = Math.floor(ballY / BLOCK_H);
+      let blockIndexUnderBall = rowColToArrayIndex(ballBlockCol, ballBlockRow);
+      
+      // if the ball is in the same location as a block, then hide the block
+      if(ballBlockCol >= 0 && ballBlockCol < BLOCK_COLS &&  // makes sure checking for blocks within the columns
+         ballBlockRow >= 0 && ballBlockRow < BLOCK_ROWS) {  // makes sure checking the blocks within the rows
+
+        if(blockGrid[blockIndexUnderBall]) { // if true, i.e. a block is visible where the ball is
+          blockGrid[blockIndexUnderBall] = false; // block disappears
+
+          // workout where the ball was previously to make the ball bounce in the right direction i.e. did the ball hit the side, bottom or top of the block
+          let prevBallX = ballX - ballSpeedX;
+          let prevBallY = ballY - ballSpeedY;
+          let prevBlockCol = Math.floor(prevBallX / BLOCK_W);
+          let prevBlockRow = Math.floor(prevBallY / BLOCK_H);
+
+          let bothTestsFailed = true; // if true, both adjacent blocks (to the side and above/below) are visible
+
+          // compare the 'hit' column to that of the balls previous location
+          if(prevBlockCol != ballBlockCol) { // previous ball location in a different column
+            let adjBlockSide = rowColToArrayIndex(prevBlockCol, ballBlockRow); // index of the block left/right of the block being 'hit'
+            if(blockGrid[adjBlockSide] == false) { // if the adjacent block (left/right) is hidden, reverse horizontal direction (x-axis)
+              ballSpeedX *= -1;
+              bothTestsFailed = false; // stops 'bothTestsFailed' from running
+            }
+          }; // end of compare columns 'if' statement
+
+          // compare the 'hit' row to that of the balls previous location
+          if(prevBlockRow != ballBlockRow) { // previous ball location in a different row
+            let adjBlockTopBot = rowColToArrayIndex(ballBlockCol, prevBlockRow); // index of the block above/below the block being 'hit'
+            if(blockGrid[adjBlockTopBot] == false) { // if the adjacent block (above/below) is hidden, reverse vertical direction (y-axis)
+              ballSpeedY *= -1; // 
+              bothTestsFailed = false; // stops 'bothTestsFailed' from running
+            }
+          }; // end of compare rows 'if' statement
+
+          if(bothTestsFailed) { // if true ball hits a corner where both adjacent blocks are visible
+            ballSpeedX *= -1; // reverse horizontal direction (x-axis)
+            ballSpeedY *= -1; // reverse vertical direction (y-axis)
+          } // end of bothTestsFailed 'if' statement
+
+          blocksLeft--;
+          console.log(blocksLeft);
+        } // end of is a block visible where the ball is
+      } // end of is the index within the block-grid
+    }; // end of ball/block handling 
+
+    // moving the paddle and checking for the ball hitting the paddle
+    function paddleHandling() {
+      // specify the 'hit' area of the paddle (top/bottom/left,right)
       let paddleTopEdgeY = canvas.height-PADDLE_DIST_FROM_EDGE;
       let paddleBottomEdgeY = paddleTopEdgeY + PADDLE_THICKNESS;
       let paddleLeftEdgeX = paddleX;
       let paddleRightEdgeX = paddleX + PADDLE_WIDTH;
 
-      if( ballY > paddleTopEdgeY && ballY < paddleBottomEdgeY &&   // top and bottom
-          ballX > paddleLeftEdgeX && ballX < paddleRightEdgeX) {   // left and right
-            ballSpeedY *= -1; // reverse direction
+      // is the balls' x and y value within the area of the paddle
+      if(ballY > paddleTopEdgeY && 
+        ballY < paddleBottomEdgeY && 
+        ballX > paddleLeftEdgeX && 
+        ballX < paddleRightEdgeX) {   
+          ballSpeedY *= -1; // reverse direction
 
-            let centerOfPaddleX = paddleX + PADDLE_WIDTH/2;
-            let ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
-            ballSpeedX = ballDistFromPaddleCenterX * 0.35;  // creates a speed range along the x-axis of -17.5 (to the left) to 17.5 (to the right)
+          let centerOfPaddleX = paddleX + PADDLE_WIDTH/2;
+          let ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
+
+          // sets how steep the ball bounces off the paddle
+          ballSpeedX = ballDistFromPaddleCenterX * 0.35;  // creates a speed range along the x-axis of -17.5 (to the left) to 17.5 (to the right)
       }
     };
+
+    // run all the movement and collision check functions
+    function moveAll() {  
+      ballMove();
+      ballBlockHandling();
+      paddleHandling(); 
+    };
     
-    function rowColToArrayIndex(col, row) { // function to give the index for each brick within brickGrid
-      return col + BRICK_COLS * row;
+    // function to give the index of each block within blockGrid
+    function rowColToArrayIndex(col, row) { 
+      return col + BLOCK_COLS * row;
     }
 
-    function drawBricks() {
-      for (let eachRow=0; eachRow<BRICK_ROWS; eachRow++ ) { // each row
-        for (let eachCol=0; eachCol<BRICK_COLS; eachCol++) { // each column in that row
+    // function to draw the blocks
+    function drawBlocks() {
+      for (let eachRow=0; eachRow<BLOCK_ROWS; eachRow++) { // each row
+        for (let eachCol=0; eachCol<BLOCK_COLS; eachCol++) { // each column in that row
           
-          let arrayIndex = rowColToArrayIndex(eachCol, eachRow); // gives the index for each brick
-          if(brickGrid[arrayIndex]) {
-            colorRect(BRICK_W*eachCol,BRICK_H*eachRow, BRICK_W-BRICK_GAP,BRICK_H-BRICK_GAP, 'blue');
-          } // end of is this break here
+          let arrayIndex = rowColToArrayIndex(eachCol, eachRow); // gives the index for each block
+          let color = 'blue';
+          if(eachRow%2 == 1) { // all the even rows set to a different colour
+            color = 'lightBlue';
+          }
+          if(blockGrid[arrayIndex]) {
+            colorRect(BLOCK_W*eachCol,BLOCK_H*eachRow, BLOCK_W-BLOCK_GAP,BLOCK_H-BLOCK_GAP, color);
+          } // end of is this block here
         } // end of for each column
       } // end of for each row
-    }; // end of drawBricks func
+    }; // end of drawBlocks func
 
-    // 
+    // run all the draw functions
     function drawAll() { 
-      colorRect(0,0, canvas.width,canvas.height, 'black'); // draw background
-      colorCircle(ballX,ballY, 8, 'white'); // draw the ball
-      colorRect(paddleX,canvas.height-PADDLE_DIST_FROM_EDGE, PADDLE_WIDTH,PADDLE_THICKNESS, 'white'); // draw the paddle
-      drawBricks(); // draw each brick
+      // draw background
+      colorRect(0,0, canvas.width,canvas.height, 'black');
+      // draw the ball
+      colorCircle(ballX,ballY, 8, 'white'); 
+      // draw the paddle
+      colorRect(paddleX,canvas.height-PADDLE_DIST_FROM_EDGE, PADDLE_WIDTH,PADDLE_THICKNESS, 'white'); 
+      // draw each block
+      drawBlocks(); 
 
-      let mouseBrickCol = Math.floor(mouseX / BRICK_W);
-      let mouseBrickRow = Math.floor(mouseY / BRICK_H);
-      let brickIndexUnderMouse = rowColToArrayIndex(mouseBrickCol, mouseBrickRow);
-      colorText("("+mouseBrickCol+","+mouseBrickRow+") :"+brickIndexUnderMouse, mouseX,mouseY, 'yellow'); // helps identify the array index of each brick the mouse hovers over
-
-      if(brickIndexUnderMouse >= 0 && brickIndexUnderMouse < BRICK_COLS*BRICK_ROWS) {
-        brickGrid[brickIndexUnderMouse] = false;
-      }
+      // ** helpful text to identify the array index of each block the mouse hovers over **
+      // let mouseBlockCol = Math.floor(mouseX / BLOCK_W);
+      // let mouseBlockRow = Math.floor(mouseY / BLOCK_H);
+      // let blockIndexUnderMouse = rowColToArrayIndex(mouseBlockCol, mouseBlockRow);
+      // colorText("("+mouseBlockCol+","+mouseBlockRow+") :"+blockIndexUnderMouse, mouseX,mouseY, 'yellow'); 
     };
 
     // function to draw a rectangle
