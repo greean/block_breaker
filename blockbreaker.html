@@ -18,22 +18,24 @@
     let ballSpeedY = 7;
 
     const BLOCK_W = 80;
-    const BLOCK_H = 40;
+    const BLOCK_H = 20;
     const BLOCK_GAP = 2;
     const BLOCK_COLS = 10;
-    const BLOCK_ROWS = 7;
+    const BLOCK_ROWS = 14;
     let blockGrid = new Array(BLOCK_COLS * BLOCK_ROWS);  // array identifier for each block
     let blocksLeft = 0;
 
     const PADDLE_WIDTH = 100;
-    const PADDLE_THICKNESS = 10;
+    const PADDLE_THICKNESS = 30;
     const PADDLE_DIST_FROM_EDGE = 40;
     let paddleX = 400; // default start position for the paddle
     
     let canvas, canvasContext;
+    let framesPerSecond = 20;
 
     let mouseX = 0;
     let mouseY = 0;
+    
 
     // function to make the paddle move with the mouse
     function updateMousePos(e) {
@@ -47,25 +49,32 @@
       paddleX = mouseX - PADDLE_WIDTH/2; 
       // note paddleY is not needed as this won't change, i.e. paddle only moves left and right
 
-      // cheat to check ball/block collisions
-      ballX = mouseX;
-      ballY = mouseY;
-      ballSpeedX = 4;
-      ballSpeedY = -4;
+      // cheat in order to check ball/block collisions easier
+      // ballX = mouseX;
+      // ballY = mouseY;
+      // ballSpeedX = 4;
+      // ballSpeedY = -4;
     };
 
     // displays the blocks and how they are set up 
     function blockReset() {
-      for(let i=0; i<BLOCK_COLS*BLOCK_ROWS; i++){
+      blocksLeft = 0;
+      let i;
+      for(i=0; i < 3*BLOCK_COLS; i++) { // create a 'gutter' at the top i.e. top 3 rows are hidden
+        blockGrid[i] = false;
+      }
+      for(; i<BLOCK_COLS*(BLOCK_ROWS); i++){ // rest of the blocks in the grid
+        blockGrid[i] = true; // comment out the above and use this line to set all to true
+        blocksLeft++; // 'blocksLeft' increases for every block made visible
+
+        // **** RANDOMISE OPTION ****
         // if(Math.random() < 0.5) {  // 50% chance of each block being displayed
         //   blockGrid[i] = true;
-        //   blocksLeft++;
+        //   blocksLeft++; // 'blocksLeft' increases for every block made visible
         // }else{
         //   blockGrid[i] = false;
         // } // end of if/else (random display)
 
-        blockGrid[i] = true; // comment out the above and use this line to set all to true
-        blocksLeft++;
       } // end of for loop (each block)
 
       // blockGrid[5] = false; // set specific blocks to not show
@@ -77,14 +86,55 @@
       canvas = document.getElementById('gameCanvas');
       canvasContext = canvas.getContext('2d');
 
-      let framesPerSecond = 20;
       setInterval(updateAll, 1000/framesPerSecond);
 
       canvas.addEventListener('mousemove', updateMousePos);
 
       blockReset();
-      // ballReset();
+      ballReset();
     };
+
+    // function ()
+    // cheats to speed up and slow down the ball 
+    document.addEventListener('keypress', (e) => {
+      // speed up Y
+      if(e.key == 'f') {
+        if(ballSpeedY < 0) {
+          ballSpeedY--;
+        };
+        if(ballSpeedY >= 0) {
+          ballSpeedY++;
+        }; 
+      };
+      // slow down Y
+      if(e.key == 's') {
+        if(ballSpeedY < 0) {
+          ballSpeedY++;
+        };
+        if(ballSpeedY >= 0) {
+          ballSpeedY--;
+        }; 
+      };
+      // increase frames per second
+      if(e.key == 'u') {
+        if(framesPerSecond < 40) {
+          framesPerSecond++;
+        }
+        setInterval(updateAll, 1000/framesPerSecond);
+      }
+      // decrease frames per second
+      if(e.key == 'd') {
+        if(framesPerSecond > 1) {
+          framesPerSecond--;
+        }
+        setInterval(updateAll, 1000/framesPerSecond);
+      }
+      // pause the game
+      if(e.key == 'q') {
+        clearInterval(time);
+        console.log(`Q pressed`);
+      }
+    });
 
     // runs all move and draw functions for each frame
     function updateAll() {
@@ -104,15 +154,15 @@
       ballY += ballSpeedY;
 
       // movement along x-axis
-      if(ballX > canvas.width){ // right side
+      if(ballX > canvas.width && ballSpeedX > 0.0){ // right side
         ballSpeedX *= -1; // swap from positive to negative
       };
-      if(ballX < 0){ // left side
+      if(ballX < 0 && ballSpeedX < 0.0){ // left side
         ballSpeedX *= -1; // swap back from negative to positive
       };
 
       // movement along y-axis
-      if(ballY < 0){ // top of canvas
+      if(ballY < 0 && ballSpeedY < 0.0){ // top of canvas
         ballSpeedY *= -1; // swap from negative to positive
       };
       if(ballY > canvas.height){ // bottom of canvas
@@ -120,22 +170,34 @@
       };
     };
 
+    // function to check if there's a block at a given 'grid' coordinate
+    function isBlockAtColRow(col,row) {
+      if(col >= 0 && col < BLOCK_COLS &&  // check for blocks within the column limit
+         row >= 0 && row < BLOCK_ROWS) {  // check for blocks within the row limit
+        let blockIndexUnderCoord = colRowToArrayIndex(col, row);
+        return blockGrid[blockIndexUnderCoord]; // true/false
+      }else{
+        return false;
+      }
+    };
 
     // function to check for the ball hitting a visible block
     function ballBlockHandling() {
       // check if the ball is within the range of the columns and rows
       let ballBlockCol = Math.floor(ballX / BLOCK_W);
       let ballBlockRow = Math.floor(ballY / BLOCK_H);
-      let blockIndexUnderBall = rowColToArrayIndex(ballBlockCol, ballBlockRow);
+      let blockIndexUnderBall = colRowToArrayIndex(ballBlockCol, ballBlockRow);
       
       // if the ball is in the same location as a block, then hide the block
       if(ballBlockCol >= 0 && ballBlockCol < BLOCK_COLS &&  // makes sure checking for blocks within the columns
          ballBlockRow >= 0 && ballBlockRow < BLOCK_ROWS) {  // makes sure checking the blocks within the rows
 
-        if(blockGrid[blockIndexUnderBall]) { // if true, i.e. a block is visible where the ball is
+        if(isBlockAtColRow(ballBlockCol,ballBlockRow)) { // if true, i.e. a block is visible where the ball is
           blockGrid[blockIndexUnderBall] = false; // block disappears
+          blocksLeft--;
+          console.log(`Blocks left = ${blocksLeft}`);
 
-          // workout where the ball was previously to make the ball bounce in the right direction i.e. did the ball hit the side, bottom or top of the block
+          // workout where the ball was previously to make the ball bounce in the right direction i.e. did the ball hit the side, bottom or top of the block, or hit a corner
           let prevBallX = ballX - ballSpeedX;
           let prevBallY = ballY - ballSpeedY;
           let prevBlockCol = Math.floor(prevBallX / BLOCK_W);
@@ -144,18 +206,16 @@
           let bothTestsFailed = true; // if true, both adjacent blocks (to the side and above/below) are visible
 
           // compare the 'hit' column to that of the balls previous location
-          if(prevBlockCol != ballBlockCol) { // previous ball location in a different column
-            let adjBlockSide = rowColToArrayIndex(prevBlockCol, ballBlockRow); // index of the block left/right of the block being 'hit'
-            if(blockGrid[adjBlockSide] == false) { // if the adjacent block (left/right) is hidden, reverse horizontal direction (x-axis)
+          if(prevBlockCol != ballBlockCol) { // if previous ball location was in a different column 
+            if(isBlockAtColRow(prevBlockCol,ballBlockRow) == false) { // if the adjacent block (left/right) is hidden, reverse horizontal direction (x-axis)
               ballSpeedX *= -1;
               bothTestsFailed = false; // stops 'bothTestsFailed' from running
             }
           }; // end of compare columns 'if' statement
 
           // compare the 'hit' row to that of the balls previous location
-          if(prevBlockRow != ballBlockRow) { // previous ball location in a different row
-            let adjBlockTopBot = rowColToArrayIndex(ballBlockCol, prevBlockRow); // index of the block above/below the block being 'hit'
-            if(blockGrid[adjBlockTopBot] == false) { // if the adjacent block (above/below) is hidden, reverse vertical direction (y-axis)
+          if(prevBlockRow != ballBlockRow) { // if previous ball location was in a different row
+            if(isBlockAtColRow(ballBlockCol,prevBlockRow) == false) { // if the adjacent block (above/below) is hidden, reverse vertical direction (y-axis)
               ballSpeedY *= -1; // 
               bothTestsFailed = false; // stops 'bothTestsFailed' from running
             }
@@ -165,9 +225,6 @@
             ballSpeedX *= -1; // reverse horizontal direction (x-axis)
             ballSpeedY *= -1; // reverse vertical direction (y-axis)
           } // end of bothTestsFailed 'if' statement
-
-          blocksLeft--;
-          console.log(blocksLeft);
         } // end of is a block visible where the ball is
       } // end of is the index within the block-grid
     }; // end of ball/block handling 
@@ -181,17 +238,20 @@
       let paddleRightEdgeX = paddleX + PADDLE_WIDTH;
 
       // is the balls' x and y value within the area of the paddle
-      if(ballY > paddleTopEdgeY && 
-        ballY < paddleBottomEdgeY && 
-        ballX > paddleLeftEdgeX && 
-        ballX < paddleRightEdgeX) {   
-          ballSpeedY *= -1; // reverse direction
+      if(ballY > paddleTopEdgeY && ballY < paddleBottomEdgeY && ballX > paddleLeftEdgeX && ballX < paddleRightEdgeX) {   
+        ballSpeedY *= -1; // reverse vertical direction
+        console.log(`fps: ${framesPerSecond} | speedX: ${ballSpeedX} | speedY: ${ballSpeedY}`);
 
-          let centerOfPaddleX = paddleX + PADDLE_WIDTH/2;
-          let ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
+        let centerOfPaddleX = paddleX + PADDLE_WIDTH/2;
+        let ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
 
-          // sets how steep the ball bounces off the paddle
-          ballSpeedX = ballDistFromPaddleCenterX * 0.35;  // creates a speed range along the x-axis of -17.5 (to the left) to 17.5 (to the right)
+        // sets how steep the ball bounces off the paddle
+        ballSpeedX = ballDistFromPaddleCenterX * 0.35;  // creates a speed range along the x-axis of -17.5 (to the left) to 17.5 (to the right)
+
+        // resets the bricks when the ball hits the paddle, if all the blocks have gone
+        if(blocksLeft == 0){
+          blockReset();
+        }
       }
     };
 
@@ -203,16 +263,16 @@
     };
     
     // function to give the index of each block within blockGrid
-    function rowColToArrayIndex(col, row) { 
+    function colRowToArrayIndex(col, row) { 
       return col + BLOCK_COLS * row;
     }
 
     // function to draw the blocks
     function drawBlocks() {
-      for (let eachRow=0; eachRow<BLOCK_ROWS; eachRow++) { // each row
-        for (let eachCol=0; eachCol<BLOCK_COLS; eachCol++) { // each column in that row
+      for (let eachCol=0; eachCol<BLOCK_COLS; eachCol++) { // each column
+        for (let eachRow=0; eachRow<BLOCK_ROWS; eachRow++) { // each row in that column
           
-          let arrayIndex = rowColToArrayIndex(eachCol, eachRow); // gives the index for each block
+          let arrayIndex = colRowToArrayIndex(eachCol, eachRow); // gives the index for each block
           let color = 'blue';
           if(eachRow%2 == 1) { // all the even rows set to a different colour
             color = 'lightBlue';
@@ -238,7 +298,7 @@
       // ** helpful text to identify the array index of each block the mouse hovers over **
       // let mouseBlockCol = Math.floor(mouseX / BLOCK_W);
       // let mouseBlockRow = Math.floor(mouseY / BLOCK_H);
-      // let blockIndexUnderMouse = rowColToArrayIndex(mouseBlockCol, mouseBlockRow);
+      // let blockIndexUnderMouse = colRowToArrayIndex(mouseBlockCol, mouseBlockRow);
       // colorText("("+mouseBlockCol+","+mouseBlockRow+") :"+blockIndexUnderMouse, mouseX,mouseY, 'yellow'); 
     };
 
