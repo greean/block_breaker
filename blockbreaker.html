@@ -6,12 +6,14 @@
   <link rel="stylesheet" media="screen" href="style.css">
   <title>Block Breaker</title>
 </head>
-<body> 
-  <h1>Block Breaker</h1>
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
-  
+<body>
+  <div class="wrapper">
+    <h1>Block Breaker</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+  </div>  
   <script>
     // variables
+    let paused = false;
     let ballX = 75;
     let ballY = 75;
     let ballSpeedX = 5;
@@ -26,16 +28,18 @@
     let blocksLeft = 0;
 
     const PADDLE_WIDTH = 100;
-    const PADDLE_THICKNESS = 30;
+    const PADDLE_THICKNESS = 14;
     const PADDLE_DIST_FROM_EDGE = 40;
     let paddleX = 400; // default start position for the paddle
     
     let canvas, canvasContext;
-    let framesPerSecond = 20;
+    let framesPerSecond = 24;
 
     let mouseX = 0;
     let mouseY = 0;
-    
+    let score = 0;
+    let lives = 3;
+    let time;
 
     // function to make the paddle move with the mouse
     function updateMousePos(e) {
@@ -81,12 +85,22 @@
 
     }; // end of blockReset func
 
+    // functions to start and stop the game
+    function stop() {
+      clearInterval(time);
+    }
+    function updateInterval() {
+      stop(); // clears the previous setInterval, otherwise they all add up 
+      time = setInterval(updateAll, 1000/framesPerSecond);
+      return time;
+    }
+
     // once the window has loaded
     window.onload = function() {
       canvas = document.getElementById('gameCanvas');
       canvasContext = canvas.getContext('2d');
 
-      setInterval(updateAll, 1000/framesPerSecond);
+      updateInterval();
 
       canvas.addEventListener('mousemove', updateMousePos);
 
@@ -94,45 +108,32 @@
       ballReset();
     };
 
-    // function ()
-    // cheats to speed up and slow down the ball 
+    // cheats to speed up and slow down the ball for testing
     document.addEventListener('keypress', (e) => {
-      // speed up Y
-      if(e.key == 'f') {
-        if(ballSpeedY < 0) {
-          ballSpeedY--;
-        };
-        if(ballSpeedY >= 0) {
-          ballSpeedY++;
-        }; 
-      };
-      // slow down Y
+      // decrease frames per second - "Slow"
       if(e.key == 's') {
-        if(ballSpeedY < 0) {
-          ballSpeedY++;
-        };
-        if(ballSpeedY >= 0) {
-          ballSpeedY--;
-        }; 
-      };
-      // increase frames per second
-      if(e.key == 'u') {
-        if(framesPerSecond < 40) {
-          framesPerSecond++;
+        if(framesPerSecond > 16) {
+          framesPerSecond = framesPerSecond-4;
+          console.log(framesPerSecond);
         }
-        setInterval(updateAll, 1000/framesPerSecond);
+        updateInterval();
       }
-      // decrease frames per second
-      if(e.key == 'd') {
-        if(framesPerSecond > 1) {
-          framesPerSecond--;
+      // increase frames per second - "Accelerate"
+      if(e.key == 'a') {
+        if(framesPerSecond < 48) {
+          framesPerSecond = framesPerSecond+4;
+          console.log(framesPerSecond);
         }
-        setInterval(updateAll, 1000/framesPerSecond);
+        updateInterval();
       }
+      
       // pause the game
-      if(e.key == 'q') {
-        clearInterval(time);
-        console.log(`Q pressed`);
+      if(e.key == 'p' && !paused) {
+        stop();
+        paused = true;
+      } else {
+        updateInterval();
+        paused = false;
       }
     });
 
@@ -146,6 +147,8 @@
     function ballReset() {  
       ballX = canvas.width/2; // centre of the x-axis
       ballY = canvas.height/2; // centre of the y-axis
+      framesPerSecond = 24;
+      updateInterval();
     };
 
     // function to move the ball
@@ -166,7 +169,9 @@
         ballSpeedY *= -1; // swap from negative to positive
       };
       if(ballY > canvas.height){ // bottom of canvas
+        
         ballReset(); // reset the ball position
+        lives--;
       };
     };
 
@@ -195,6 +200,7 @@
         if(isBlockAtColRow(ballBlockCol,ballBlockRow)) { // if true, i.e. a block is visible where the ball is
           blockGrid[blockIndexUnderBall] = false; // block disappears
           blocksLeft--;
+          score = score + 10;
           console.log(`Blocks left = ${blocksLeft}`);
 
           // workout where the ball was previously to make the ball bounce in the right direction i.e. did the ball hit the side, bottom or top of the block, or hit a corner
@@ -295,6 +301,12 @@
       // draw each block
       drawBlocks(); 
 
+      // draw the score
+      colorText(`Score: ${score}`, 40,30, 'green');
+
+      // draw remaining lives
+      colorText(`Lives: ${lives}`, 670,30, 'green');
+
       // ** helpful text to identify the array index of each block the mouse hovers over **
       // let mouseBlockCol = Math.floor(mouseX / BLOCK_W);
       // let mouseBlockRow = Math.floor(mouseY / BLOCK_H);
@@ -319,6 +331,7 @@
     // function to display text
     function colorText(showWords, textX,textY, fillColor) {
       canvasContext.fillStyle = fillColor;
+      canvasContext.font = "20px Verdana";
       canvasContext.fillText(showWords, textX,textY);
     };
 

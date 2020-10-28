@@ -1,4 +1,45 @@
-#gameCanvas {
-    border: 10px solid darkgreen;
-    padding: 10px;;
+@import url('https://fonts.googleapis.com/css2?family=Fjalla+One&family=Permanent+Marker&family=Roboto&display=swap');
+/*  font-family: 'Fjalla One', sans-serif;
+    font-family: 'Permanent Marker', cursive;
+    font-family: 'Roboto', sans-serif; */
+
+html {
+  box-sizing: border-box;
+  min-height: 100%;
+}
+
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  font-size: large;
+  /* letter-spacing: 0.5px; */
+  margin: 0;
+  min-height: 100%;
+  position: relative;
+  background-color: #141033;
+}
+
+header {
+  background-color: darkslateblue;
+}
+
+h1, h2 {
+  /* font-family: 'Fjalla One', sans-serif; */
+  text-align: center;
+  color: seagreen;
+}
+
+.wrapper {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flexbox;
+    /* padding: 0px; */
+}
+
+canvas {
+    border: 5px solid darkgreen;
+    padding: 10px;
 }
