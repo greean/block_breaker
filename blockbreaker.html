@@ -7,13 +7,14 @@
   <title>Block Breaker</title>
 </head>
 <body>
+  <h1>Block Breaker</h1>
   <div class="wrapper">
-    <h1>Block Breaker</h1>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
   </div>  
   <script>
     // variables
-    let paused = false;
+    let start = true;
+    let paused = true;
     let ballX = 75;
     let ballY = 75;
     let ballSpeedX = 5;
@@ -35,11 +36,13 @@
     let canvas, canvasContext;
     let framesPerSecond = 24;
 
-    let mouseX = 0;
-    let mouseY = 0;
-    let score = 0;
+    let mouseX, mouseY, score = 0;
+    // let mouseY = 0;
+    // let score = 0;
     let lives = 3;
-    let time;
+    let time, pausedTime;
+
+    let randPauseX = 0;
 
     // function to make the paddle move with the mouse
     function updateMousePos(e) {
@@ -49,6 +52,7 @@
       // mouse fix for majority of browsers
       mouseX = e.clientX - rect.left - root.scrollLeft; // cancel out how far the canvas is from the left side and how far the person has scrolled from side to side
       mouseY = e.clientY - rect.top - root.scrollTop; 
+
 
       paddleX = mouseX - PADDLE_WIDTH/2; 
       // note paddleY is not needed as this won't change, i.e. paddle only moves left and right
@@ -85,32 +89,71 @@
 
     }; // end of blockReset func
 
-    // functions to start and stop the game
+    // functions to pause the game
     function stop() {
       clearInterval(time);
     }
+
+    //  ***** NEED A FUNCTION TO STOP THE PAUSEDTIME INTERVAL??!!
+
+    // function to set the frame rate and make everything move during the game
     function updateInterval() {
       stop(); // clears the previous setInterval, otherwise they all add up 
       time = setInterval(updateAll, 1000/framesPerSecond);
       return time;
     }
 
+    // function to set interval for paused screen
+    function setPause() {
+      stop(); // clears the previous setInterval, otherwise they all add up 
+      pausedTime = setInterval(drawPause, 1000/24); 
+      return pausedTime;
+    }
+
+    // draw start screen and cover to hide blocks, ball and paddle when game is paused
+    function drawPause() {
+      if(paused == true) {
+        colorRect(0,0, canvas.width,canvas.height, 'black');
+
+        // only if it's on the start screen
+        if(start == true) { 
+          colorText(`Press to start`, 230,canvas.height/2, 'bolder 60px Roboto','orange');
+          canvas.addEventListener('click', (e) => {
+            if(start) {
+              start = false;
+              paused = false;
+              updateInterval();
+            }
+          })
+        // else show pause game text (pause button pressed)
+        }else{
+          colorText(`Game Paused`, 275,canvas.height/2, 'bolder 40px Roboto','orange');
+          // Math.floor(Math.random()*550)
+        }
+        
+        // colorText(`${Math.floor(mouseX)}, ${Math.floor(mouseY)}` , mouseX,mouseY, 'normal 20px Roboto','yellow');
+      }      
+    };
+
+
     // once the window has loaded
     window.onload = function() {
       canvas = document.getElementById('gameCanvas');
       canvasContext = canvas.getContext('2d');
 
-      updateInterval();
+      // updateInterval();
+      drawPause();
 
       canvas.addEventListener('mousemove', updateMousePos);
+      
 
-      blockReset();
-      ballReset();
+      // blockReset();
+      // ballReset();
     };
 
     // cheats to speed up and slow down the ball for testing
     document.addEventListener('keypress', (e) => {
-      // decrease frames per second - "Slow"
+      // decrease frame rate - "Slow"
       if(e.key == 's') {
         if(framesPerSecond > 16) {
           framesPerSecond = framesPerSecond-4;
@@ -118,7 +161,7 @@
         }
         updateInterval();
       }
-      // increase frames per second - "Accelerate"
+      // increase frame rate - "Accelerate"
       if(e.key == 'a') {
         if(framesPerSecond < 48) {
           framesPerSecond = framesPerSecond+4;
@@ -129,10 +172,12 @@
       
       // pause the game
       if(e.key == 'p' && !paused) {
-        stop();
         paused = true;
+        stop();
+        setPause();
       } else {
         updateInterval();
+        // clearInterval(pausedTime);
         paused = false;
       }
     });
@@ -143,11 +188,11 @@
       drawAll();
     };
 
-    // sets where the ball is positioned once it's moved off the bottom edge
+    // sets where the ball is positioned once it's moved off the bottom edge, and resets the frame rate
     function ballReset() {  
       ballX = canvas.width/2; // centre of the x-axis
       ballY = canvas.height/2; // centre of the y-axis
-      framesPerSecond = 24;
+      framesPerSecond = 24; 
       updateInterval();
     };
 
@@ -301,17 +346,17 @@
       // draw each block
       drawBlocks(); 
 
-      // draw the score
-      colorText(`Score: ${score}`, 40,30, 'green');
-
-      // draw remaining lives
-      colorText(`Lives: ${lives}`, 670,30, 'green');
-
-      // ** helpful text to identify the array index of each block the mouse hovers over **
+      // ** helpful text to identify the array index of each block the mouse hovers over (when testing) **
       // let mouseBlockCol = Math.floor(mouseX / BLOCK_W);
       // let mouseBlockRow = Math.floor(mouseY / BLOCK_H);
       // let blockIndexUnderMouse = colRowToArrayIndex(mouseBlockCol, mouseBlockRow);
-      // colorText("("+mouseBlockCol+","+mouseBlockRow+") :"+blockIndexUnderMouse, mouseX,mouseY, 'yellow'); 
+      // colorText("("+mouseBlockCol+","+mouseBlockRow+") :"+blockIndexUnderMouse, mouseX,mouseY, 'yellow');
+      
+      // draw the score
+      colorText(`Score: ${score}`, 40,30, '20px Roboto','green');
+      // draw remaining lives
+      colorText(`Lives: ${lives}`, 680,30, '20px Roboto','green');
+
     };
 
     // function to draw a rectangle
@@ -329,9 +374,9 @@
     };
 
     // function to display text
-    function colorText(showWords, textX,textY, fillColor) {
+    function colorText(showWords, textX,textY, fillFont, fillColor) {
+      canvasContext.font = fillFont;
       canvasContext.fillStyle = fillColor;
-      canvasContext.font = "20px Verdana";
       canvasContext.fillText(showWords, textX,textY);
     };
 
