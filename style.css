@@ -33,15 +33,16 @@ h1, h2 {
 }
 
 .wrapper {
-    max-width: 1000px;
-    margin: 0 auto;
-    display: flexbox;
-    /* padding: 0px; */
+    width: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: center;
 }
 
 canvas {
     border: 5px solid darkgreen;
     /* background-color: black; */
     padding: 10px;
+    justify-content: center;
     
 }

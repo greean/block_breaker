@@ -15,6 +15,7 @@
     // variables
     let start = true;
     let paused = true;
+    let gameOver = false;
     let ballX = 75;
     let ballY = 75;
     let ballSpeedX = 5;
@@ -72,7 +73,7 @@
         blockGrid[i] = false;
       }
       for(; i<BLOCK_COLS*(BLOCK_ROWS); i++){ // rest of the blocks in the grid
-        blockGrid[i] = true; // comment out the above and use this line to set all to true
+        blockGrid[i] = true; // set all to true
         blocksLeft++; // 'blocksLeft' increases for every block made visible
 
         // **** RANDOMISE OPTION ****
@@ -118,13 +119,19 @@
         // only if it's on the start screen
         if(start == true) { 
           colorText(`Press to start`, 230,canvas.height/2, 'bolder 60px Roboto','orange');
-          canvas.addEventListener('click', (e) => {
+          canvas.addEventListener('click', (e) => { // start the game
             if(start) {
               start = false;
               paused = false;
+              gameOver = false;
               updateInterval();
+              blockReset();
+              ballReset();  
             }
           })
+          if(gameOver) {
+            colorText(`Game Over`, 260,canvas.height/4, 'bolder 60px Roboto','green');
+          }
         // else show pause game text (pause button pressed)
         }else{
           colorText(`Game Paused`, 275,canvas.height/2, 'bolder 40px Roboto','orange');
@@ -145,10 +152,6 @@
       drawPause();
 
       canvas.addEventListener('mousemove', updateMousePos);
-      
-
-      // blockReset();
-      // ballReset();
     };
 
     // cheats to speed up and slow down the ball for testing
@@ -214,9 +217,19 @@
         ballSpeedY *= -1; // swap from negative to positive
       };
       if(ballY > canvas.height){ // bottom of canvas
-        
-        ballReset(); // reset the ball position
-        lives--;
+        if(lives>1){
+          ballReset(); // reset the ball position
+          lives--;
+        }else{
+          stop();
+          start = true;
+          paused = true;
+          gameOver = true;
+          setPause();
+          drawPause();
+          lives = 3;
+          score = 0;
+        }
       };
     };
 
@@ -345,6 +358,9 @@
       colorRect(paddleX,canvas.height-PADDLE_DIST_FROM_EDGE, PADDLE_WIDTH,PADDLE_THICKNESS, 'white'); 
       // draw each block
       drawBlocks(); 
+
+      // draw bonus
+      colorCircle(ballX,ballY, 8, 'white');
 
       // ** helpful text to identify the array index of each block the mouse hovers over (when testing) **
       // let mouseBlockCol = Math.floor(mouseX / BLOCK_W);
